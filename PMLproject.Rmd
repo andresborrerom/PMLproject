@@ -1,0 +1,68 @@
+---
+title: "Practical Machine Learning Project"
+author: "Andres Borrero Monge"
+date: "Sunday, September 21, 2014"
+output: html_document
+---
+
+## Working with the datasets
+
+When getting a first look at the training data set, we find a lot of columns with mostly empty spaces or NAs. It is very important to take them out of the train set, as including 160 variables will take all the memory and a lot of time when fitting a tree model, much more a random forest, for example. 
+
+First step then, taking out these columns. Addiotionally, as the set is ordered by the variable classe, it will take a useless direct tree fitting by the first column (ordered column), so I will take that one out as well. 
+
+```{r}
+train<- read.csv("pml-training.csv")
+train2 <- train[,-which(train[1, ] == "")] # take out columns with empty values
+train2 <- train2[,-which(is.na(train2[1, ]))] # take out NA columns
+```
+
+Now I have a 59 variable data set. I will now create subsets for training and testing within the training original set.
+
+```{r}
+set.seed(19622)
+s <- sample(1:19622, 19000) 
+train3 <- train2[s,]
+test3 <- train2[which((1:19622 %in% s)==0), ]
+```
+
+
+## Fitting
+
+For the model fitting, I will need the caret package.
+
+```{r}
+library(caret)
+library(randomForest)
+```
+
+When running a tree model, using the train function, then getting a prediction, and comparing the prediction with the real set, I find a not very useful fitting.  The dataset train3 is the same data as train2, but in a different row order.
+
+
+```{r}
+fit <- train(classe~. , method = "rpart", data = train3 )
+pred <- predict( fit, newdata = test3 )
+fail <- pred[pred != test3$classe]
+length(fail)/length(pred)
+```
+
+This shows us a 35% failure. Not very promising. 
+
+So taking it to the next level, next fitting method will be random forest.  Running it with the train function generates a lot of calculations that take a long time. So I will first check the efficiency running it with 30 trees.
+
+
+```{r}
+fit30 <- randomForest(classe~. , data = train3, ntree= 30 )
+pred30 <- predict( fit30, newdata = test3 )
+fail30 <- pred30[pred30 != test3$classe]
+length(fail30)/length(pred30)
+fit30
+```
+
+Having a zero failure percentage in my local cross validation, and an estimated error of 0.13%, I have reached a fitting model I will trust, and which I will use in the prediction of the test set.
+
+## Results of the testing
+
+I got the 20 answers correct.
+
+
